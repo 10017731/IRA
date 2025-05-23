@@ -22,10 +22,12 @@ creds = Credentials.from_service_account_file(
 )
 sheets_api = build("sheets", "v4", credentials=creds).spreadsheets()
 
+# ─── 3. Health check ─────────────────────────────────────────
 @app.get("/ping")
 async def ping():
     return {"pong": True}
 
+# ─── 4. Single-range fetch ────────────────────────────────────
 @app.get("/sheet/{spreadsheet_id}/{range}")
 async def get_sheet(spreadsheet_id: str, range: str):
     try:
@@ -37,6 +39,26 @@ async def get_sheet(spreadsheet_id: str, range: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+# ─── 5. Full-workbook fetch ───────────────────────────────────
+@app.get("/spreadsheet/{spreadsheet_id}")
+async def get_full_spreadsheet(spreadsheet_id: str):
+    """
+    Returns every sheet and its data in the workbook.
+    """
+    try:
+        result = sheets_api.get(
+            spreadsheetId=spreadsheet_id,
+            includeGridData=True
+        ).execute()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# ─── 6. Server startup ────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("sheet_bridge:app", host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+    uvicorn.run(
+        "sheet_bridge:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 8080))
+    )
